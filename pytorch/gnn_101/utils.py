@@ -78,7 +78,7 @@ def smiles_to_graph(smiles, label=None):
 
     # Attach the label if given.
     if label is not None:
-        # Graph-level label: (1,)
-        graph.y = torch.tensor(label, dtype=torch.float).unsqueeze(0)
+        # Graph-level label: (1, num_labels)
+        graph.y = torch.tensor(label, dtype=torch.float).reshape(1, -1)
 
     return graph

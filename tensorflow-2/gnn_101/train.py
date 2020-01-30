@@ -63,7 +63,7 @@ if __name__ == '__main__':
     warnings.warn = warn
 
     # Parameters
-    num_data = 10000
+    num_data = 1000
     validate_ratio = 0.2
     max_num_atoms = 200
     batch_size = 32

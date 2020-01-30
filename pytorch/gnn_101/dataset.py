@@ -8,11 +8,13 @@ import torch_geometric
 import utils
 
 class MoleculeDataset(torch_geometric.data.Dataset):
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, num_data=None):
         csv_path = os.path.realpath(os.path.expanduser(csv_path))
         dataframe = pd.read_csv(csv_path,
                                 names=['smiles', 'label'],
                                 dtype={'label': np.float32})
+        if num_data is not None:
+            dataframe = dataframe.iloc[:num_data]
         self.dataframe = dataframe
 
     def __len__(self):

@@ -4,7 +4,8 @@ import torch.nn.functional as F
 import torch_geometric
 
 class GNN(torch.nn.Module):
-    def __init__(self, num_node_features, hidden_dim, num_convs=2, p_drop=0.5):
+    def __init__(self, num_node_features, hidden_dim,
+                 num_convs=2, p_drop=0.5):
         super().__init__()
         assert num_convs > 0
 
@@ -15,17 +16,18 @@ class GNN(torch.nn.Module):
             torch_geometric.nn.GCNConv(hidden_dim, hidden_dim)
             for _ in range(num_convs - 1)
         ])
-        self.gate = torch.nn.Linear(hidden_dim, 1)
-        self.readout = torch_geometric.nn.GlobalAttention(self.gate)
+        #self.gate = torch.nn.Linear(hidden_dim, 1)
+        #self.readout = torch_geometric.nn.GlobalAttention(self.gate)
+        self.readout = torch_geometric.nn.global_mean_pool
         self.final = torch.nn.Linear(hidden_dim, 1)
         self.p_drop = p_drop
 
-    def forward(self, graph):
-        H = graph.x.clone()
+    def forward(self, batch):
+        H = batch.x.clone()
         for conv in self.convs:
-            H = conv(H, graph.edge_index)
+            H = conv(H, batch.edge_index)
             H = F.relu(H)
             H = F.dropout(H, self.p_drop, training=self.training)
-        R = self.readout(H)
+        R = self.readout(H, batch.batch)
         out = self.final(R)
         return out
