@@ -54,9 +54,10 @@ def smiles_to_graph(smiles, label=None):
         # (num_atoms, num_features)
         node_features = torch.stack([get_atom_feature(atom)
                                      for atom in mol.GetAtoms()])
-        # (num_bonds, num_features)
-        edge_features = torch.stack([get_bond_feature(bond)
-                                     for bond in mol.GetBonds()])
+        # (2*num_bonds, num_features)
+        edge_features = torch.stack(
+            [get_bond_feature(bond) for bond in mol.GetBonds()]
+        ).repeat_interleave(2, dim=0)
     # For unknown atom or bond types
     except ValueError:
         return
