@@ -22,6 +22,7 @@ if __name__ == '__main__':
     p_drop = 0.
     num_epochs = 20
     lr = 1e-3
+    max_num_atoms = 200
 
     # Suppress sklearn warning
     def warn(*args, **kwargs):
@@ -32,14 +33,19 @@ if __name__ == '__main__':
                           else 'cpu')
 
     # Data loading
+    max_num_atoms = None
     train_dataset = dataset.MoleculeDataset(train_csv_path,
-                                            num_data=num_train_data)
-    train_loader = torch_geometric.data.DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True)
+                                            num_train_data,
+                                            max_num_atoms)
     test_dataset = dataset.MoleculeDataset(test_csv_path,
-                                           num_data=num_test_data)
-    test_loader = torch_geometric.data.DataLoader(
-        test_dataset, batch_size=batch_size)
+                                           num_test_data,
+                                           max_num_atoms)
+    if max_num_atoms is None:
+        loader = torch_geometric.data.DataLoader
+    else:
+        loader = torch_geometric.data.DenseDataLoader
+    train_loader = loader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = loader(test_dataset, batch_size=batch_size)
     print("Num of batches:", len(train_loader))
 
     model = gnn.GNN(train_dataset.num_node_features,

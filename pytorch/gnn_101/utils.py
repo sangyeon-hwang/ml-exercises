@@ -40,7 +40,7 @@ def get_bond_feature(bond):
     feature = one_hot_encode(bond_type, BOND_TYPES)
     return feature
 
-def smiles_to_graph(smiles, label=None):
+def smiles_to_graph(smiles, label=None, max_num_atoms=None):
     """Return None if:
         1) the SMILES string is erroneous
         2) unknown atom or bond types exist
@@ -81,5 +81,12 @@ def smiles_to_graph(smiles, label=None):
     if label is not None:
         # Graph-level label: (1, num_labels)
         graph.y = torch.tensor(label, dtype=torch.float).reshape(1, -1)
+
+    # Padding
+    if max_num_atoms is not None:
+        if max_num_atoms < graph.num_nodes:
+            return
+        graph = torch_geometric.transforms.ToDense(
+            max_num_atoms)(graph.clone())
 
     return graph
