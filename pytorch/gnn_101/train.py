@@ -47,7 +47,7 @@ if __name__ == '__main__':
     train_loader = loader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = loader(test_dataset, batch_size=batch_size)
 
-    model = gnn.GNN(train_dataset.num_node_features,
+    model = gnn.GCN(train_dataset.num_node_features,
                     hidden_dim,
                     num_convs,
                     p_drop).to(device)
@@ -87,12 +87,12 @@ if __name__ == '__main__':
             train_preds.extend(pred.tolist())
             train_labels.extend(batch.y.squeeze().tolist())
 
+        train_loss /= i_batch + 1
         train_report = classification_report(train_labels,
                                              np.around(train_preds),
                                              labels=[0, 1],
                                              zero_division=0,
                                              output_dict=True)
-        train_loss /= i_batch + 1
 
         # Validate
         model.eval()
@@ -106,12 +106,12 @@ if __name__ == '__main__':
             test_preds.extend(pred.tolist())
             test_labels.extend(batch.y.squeeze().tolist())
 
+        test_loss /= i_batch + 1
         test_report = classification_report(test_labels,
                                             np.around(test_preds),
                                             labels=[0, 1],
                                             zero_division=0,
                                             output_dict=True)
-        test_loss /= i_batch + 1
 
         print(report_template.format(
             epoch + 1,

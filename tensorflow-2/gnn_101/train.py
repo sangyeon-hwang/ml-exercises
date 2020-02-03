@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
     # Parameters
     num_data = 1000
-    validate_ratio = 0.2
+    test_ratio = 0.2
     max_num_atoms = 200
     batch_size = 32
     shuffle_buffer_size = 1000
@@ -78,17 +78,17 @@ if __name__ == '__main__':
         '../../data/qed_classification/train.csv',
         max_num_atoms,
         num_data)
-    # Training/validation split
-    train_As, valid_As, train_Hs, valid_Hs, train_labels, valid_labels = \
+    # Training/test split
+    train_As, test_As, train_Hs, test_Hs, train_labels, test_labels = \
         train_test_split(adj_list, feature_list, label_list,
-                         test_size=validate_ratio)
+                         test_size=test_ratio)
     train_dataset = tf.data.Dataset.from_tensor_slices((
         train_As, train_Hs, train_labels))
-    valid_dataset = tf.data.Dataset.from_tensor_slices((
-        valid_As, valid_Hs, valid_labels))
+    test_dataset = tf.data.Dataset.from_tensor_slices((
+        test_As, test_Hs, test_labels))
     train_batches = train_dataset.shuffle(buffer_size=shuffle_buffer_size)
     train_batches = train_dataset.batch(batch_size=batch_size)
-    valid_batches = valid_dataset.batch(batch_size=batch_size)
+    test_batches = test_dataset.batch(batch_size=batch_size)
     print(f"Loading finished, {time.time() - start_time:.3f} sec")
 
     optimizer=tf.keras.optimizers.Adam()
@@ -107,59 +107,48 @@ if __name__ == '__main__':
 
     for epoch in range(num_epochs):
         start_time = time.time()
-        total_train_loss = 0.
-        total_valid_loss = 0.
-        train_report = {'accuracies': [],
-                        'precisions': [],
-                        'recalls': []}
-        valid_report = {'accuracies': [],
-                        'precisions': [],
-                        'recalls': []}
+        train_loss = 0.
+        test_loss = 0.
+        train_preds, train_labels = [], []
+        test_preds, test_labels = [], []
 
         # Train
         for n_batch, train_batch in enumerate(train_batches):
             A_batch, H_batch, label_batch = train_batch
             loss, pred_batch = train_step(A_batch, H_batch, label_batch)
-            total_train_loss += loss
-            report = classification_report(label_batch,
-                                           np.around(pred_batch),
-                                           labels=[0, 1],
-                                           zero_division=0,
-                                           output_dict=True)
-            train_report['accuracies'].append(report['accuracy'])
-            train_report['precisions'].append(report['1']['precision'])
-            train_report['recalls'].append(report['1']['recall'])
 
-        mean_train_loss = total_train_loss / (n_batch + 1)
+            train_loss += loss.numpy()
+            train_preds.extend(pred_batch)
+            train_labels.extend(label_batch)
+
+        train_loss /= n_batch + 1
+        train_report = classification_report(train_labels,
+                                             np.around(train_preds),
+                                             labels=[0, 1],
+                                             zero_division=0,
+                                             output_dict=True)
 
         # Validate
-        for n_batch, valid_batch in enumerate(valid_batches):
-            A_batch, H_batch, label_batch = valid_batch
+        for n_batch, test_batch in enumerate(test_batches):
+            A_batch, H_batch, label_batch = test_batch
             loss, pred_batch = evaluate(A_batch, H_batch, label_batch)
-            total_valid_loss += loss
-            report = classification_report(label_batch,
-                                           np.around(pred_batch),
-                                           labels=[0, 1],
-                                           zero_division=0,
-                                           output_dict=True)
-            valid_report['accuracies'].append(report['accuracy'])
-            valid_report['precisions'].append(report['1']['precision'])
-            valid_report['recalls'].append(report['1']['recall'])
 
-        #print(f"Epoch {epoch} batch {n_batch} loss {loss}")
+            test_loss += loss.numpy()
+            test_preds.extend(pred_batch)
+            test_labels.extend(label_batch)
 
-        mean_valid_loss = total_valid_loss / (n_batch + 1)
-        mean_train_accuracy = np.mean(train_report['accuracies'])
-        mean_train_precision = np.mean(train_report['precisions'])
-        mean_train_recall = np.mean(train_report['recalls'])
-        mean_valid_accuracy = np.mean(valid_report['accuracies'])
-        mean_valid_precision = np.mean(valid_report['precisions'])
-        mean_valid_recall = np.mean(valid_report['recalls'])
+        test_loss /= n_batch + 1
+        test_report = classification_report(test_labels,
+                                            np.around(test_preds),
+                                            labels=[0, 1],
+                                            zero_division=0,
+                                            output_dict=True)
 
         print(report_template.format(
-            epoch + 1, mean_train_loss,
-            mean_train_accuracy, mean_train_precision, mean_train_recall,
-            mean_valid_loss,
-            mean_valid_accuracy, mean_valid_precision, mean_valid_recall,
+            epoch + 1,
+            train_loss, train_report['accuracy'],
+            train_report['1']['precision'], train_report['1']['recall'],
+            test_loss, test_report['accuracy'],
+            test_report['1']['precision'], test_report['1']['recall'],
             time.time() - start_time
         ))
